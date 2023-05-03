@@ -22,7 +22,6 @@ app.get('/', (req, res) => {
     });
 });
 app.post('/csv', upload.single('csv'), async (req, res) => {
-    // console.log(req.file.buffer.toString());
     const results = [];
     req.file.buffer
         .toString()
@@ -37,9 +36,9 @@ app.post('/csv', upload.single('csv'), async (req, res) => {
     const client = await pool.connect();
     try {
         for await (const row of results) {
-            const { name, email, phone } = row;
-            console.log(row);
-            await client.query('INSERT INTO users (name, email, phone) VALUES ($1, $2, $3)', [name, email, phone]);
+            const [name, species, gender, height_cm, affiliation] = row;
+            console.log(name);
+            await client.query('INSERT INTO "star_wars_characters" (name, species, gender, height_cm, affiliation) VALUES ($1, $2, $3, $4, $5)', [name, species, gender, height_cm, affiliation]);
         }
     }
     catch (err) {

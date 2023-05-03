@@ -39,11 +39,11 @@ app.post('/csv', upload.single('csv'), async (req, res) => {
 
   try {
     for await (const row of results) {
-      const [name, email, phone] = row;
+      const [name, species, gender, height_cm, affiliation] = row;
       console.log(name);
       await client.query(
-        'INSERT INTO users (name, email, phone) VALUES ($1, $2, $3)',
-        [name, email, phone]
+        'INSERT INTO "star_wars_characters" (name, species, gender, height_cm, affiliation) VALUES ($1, $2, $3, $4, $5)',
+        [name, species, gender, height_cm, affiliation]
       );
     }
   } catch (err) {
