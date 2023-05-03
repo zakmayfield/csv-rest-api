@@ -1,8 +1,11 @@
 import express from 'express';
 import multer from 'multer';
-import csv from 'csv-parser';
-import fs from 'fs';
+import pg from 'pg';
+import dotenv from 'dotenv';
 
+dotenv.config();
+
+const { Pool } = pg;
 const PORT = process.env.PORT || 8000;
 const CONNECTION_URL = process.env.CONNECTION_URL;
 
@@ -19,19 +22,36 @@ app.get('/', (req, res) => {
   });
 });
 
-app.post('/csv', upload.single('csv'), (req, res) => {
-  console.log(req.file.buffer.toString());
-
+app.post('/csv', upload.single('csv'), async (req, res) => {
   const results = [];
 
-  // Use csv-parser to parse the uploaded file
   req.file.buffer
     .toString()
     .split('\n')
-    .forEach((line) => {
+    .forEach((line, index) => {
+      if (index === 0) return;
       const row = line.split(',');
       results.push(row);
     });
+
+  const pool = new Pool({ connectionString: CONNECTION_URL });
+  const client = await pool.connect();
+
+  try {
+    for await (const row of results) {
+      const [name, email, phone] = row;
+      console.log(name);
+      await client.query(
+        'INSERT INTO users (name, email, phone) VALUES ($1, $2, $3)',
+        [name, email, phone]
+      );
+    }
+  } catch (err) {
+    console.log('error', err);
+  } finally {
+    await client.release();
+    await pool.end();
+  }
 
   res.status(200).json({
     data: results,

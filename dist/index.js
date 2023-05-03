@@ -5,6 +5,10 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
 const multer_1 = __importDefault(require("multer"));
+const pg_1 = __importDefault(require("pg"));
+const dotenv_1 = __importDefault(require("dotenv"));
+dotenv_1.default.config();
+const { Pool } = pg_1.default;
 const PORT = process.env.PORT || 8000;
 const CONNECTION_URL = process.env.CONNECTION_URL;
 const storage = multer_1.default.memoryStorage();
@@ -17,17 +21,34 @@ app.get('/', (req, res) => {
         API: '✅',
     });
 });
-app.post('/csv', upload.single('csv'), (req, res) => {
-    console.log(req.file.buffer.toString());
+app.post('/csv', upload.single('csv'), async (req, res) => {
+    // console.log(req.file.buffer.toString());
     const results = [];
-    // Use csv-parser to parse the uploaded file
     req.file.buffer
         .toString()
         .split('\n')
-        .forEach((line) => {
+        .forEach((line, index) => {
+        if (index === 0)
+            return;
         const row = line.split(',');
         results.push(row);
     });
+    const pool = new Pool({ connectionString: CONNECTION_URL });
+    const client = await pool.connect();
+    try {
+        for await (const row of results) {
+            const { name, email, phone } = row;
+            console.log(row);
+            await client.query('INSERT INTO users (name, email, phone) VALUES ($1, $2, $3)', [name, email, phone]);
+        }
+    }
+    catch (err) {
+        console.log('error', err);
+    }
+    finally {
+        await client.release();
+        await pool.end();
+    }
     res.status(200).json({
         data: results,
     });
